@@ -4,26 +4,27 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from collections.abc import Iterable
 %matplotlib notebook
-D_='<location of data>'
+#Original code is from Jupyter Notebook
+D_='<location of data>' #actual value of D_ contains confidential info
 DA_=D_+'analysis\\'
 A1='DC:A6:32:33:B0:E6'
 A2='DC:A6:32:33:AF:9B'
 F1T12=[i*12 for i in range(1,13)]
-def dist(file):
+def dist(file): #return distance of file
     return int(file[file.find('D')+1:file.find('@')])
-def expi(file):
+def expi(file): #return experiment # of file
     return int(file[1:file.find('D')])
-def rssis(file,**kwargs):
+def rssis(file,**kwargs): #get RSSI values from file, with specific advertiser
     adver=file[file.find('@')+1:]
     if adver!='1' and adver!='2':
         adver=str(kwargs['adver'])
     df=pd.read_csv(D_+file+'.csv')
     return list(df[df['ADDRESS']==(A1 if adver=='1' else A2)]['RSSI'])
-def files(e,ds):
+def files(e,ds): #generate list of file names for a fixed experiment # and a list of distances
     return ['E'+str(e)+'D'+str(d)+'@'+str(a) for d in ds for a in [1,2]]
-def files12(e,ds):
+def files12(e,ds): #files() but for experiments #9,10
     return ['E'+str(e)+'D'+str(d)+'@1,2' for d in ds]
-FSS=[
+FSS=[ #FSS[i]=list of all files with experiment #i
     None,
     files(1,[*[i*12 for i in range(1,9)],120]),
     files(2,[*[i*12 for i in range(1,16)],12*17,12*20,12*25]),
@@ -32,7 +33,8 @@ FSS=[
     *[files(i,F1T12) for i in range(5,9)],
     *[files12(i,F1T12) for i in [9,10]],
 ]
-def avgs(ax,files,**kwargs):
+def avgs(ax,files,**kwargs): #plot average RSSI values at each distance
+    #for experiments #1-8, there will be two averages plotted at each distance, 1 for the average RSSI values advertised from each Pi
     cmap=plt.cm.get_cmap('tab20')
     i=0
     k1={**kwargs}
@@ -42,7 +44,7 @@ def avgs(ax,files,**kwargs):
         #print(f+':'+str(np.mean(r)))
         ax.scatter(dist(f),np.mean(r),label=f,color=cmap(i/20),**k1)
         i+=1
-def boxes(ax,files,**kwargs):
+def boxes(ax,files,**kwargs): #avgs() but plotting boxplots at each distance instead
     cmap=plt.cm.get_cmap('tab20')
     data=[]
     dists=[]
@@ -51,13 +53,7 @@ def boxes(ax,files,**kwargs):
         dists.append(dist(f))
     kwargs.pop('adver',None)
     ax.boxplot(data,positions=dists,widths=[6 for f in files],**kwargs)
-def lines(ax,files,**kwargs):
-    for f in files:
-        r=rssis(f,**kwargs)
-        ax.plot(r,label=' '+f)
-        #print('f='+f+', len='+str(len(r))+', avg='+str(np.mean(r)))
-    ax.legend()
-def hists(files,legend,**kwargs):
+def hists(files,legend,**kwargs): #plot histogram of RSSIs from each file
     fig, ax=plt.subplots()
     print('avgs:')
     cmap=plt.cm.get_cmap('tab20')
@@ -71,10 +67,12 @@ def hists(files,legend,**kwargs):
         i+=1
     if legend:
         ax.legend()
-    ax.set_title('histogram of RSSIs of experiment #1')
     ax.set_xlabel('RSSIs')
     plt.show()
     plt.save_fig(DA_+'tmp.png')
+
+#--------ROC
+#for calculating ROC curves efficiently (uses mask arrays, faster than pure Python loops)
 def data(files,**kwargs):
     ds=[]
     rs=[]
@@ -106,7 +104,9 @@ def plt_roc(ax,fs,R,**kwargs):
     ax.plot(fprs,tprs,**kwargs)
     ax.set_xlabel('false positive rate')
     ax.set_ylabel('true positive rate')
-def avg_box(ax,ei,**kwargs):
+#----/ROC
+
+def avg_box(ax,ei,**kwargs): #plots boxplots and averages over all distances available for experiment #ei
     boxes(ax,FSS[ei],**kwargs)
     avgs(ax,FSS[ei],**kwargs)
 #     ax.set_xticks()
@@ -114,7 +114,21 @@ def avg_box(ax,ei,**kwargs):
     ax.set_xlabel('distance between advertiser and scanner (in)')
     ax.set_ylabel('RSSI')
     ax.set_title('averages and boxplots of experiment #'+str(str(ei)+'@'+str(kwargs['adver']) if 'adver' in kwargs else ei))
-    
+
+#plotting histogram of some distances for experiment #1
+#(if all distances are plotted at once it looks too cluttered)
+hists(files(1,[24,48,72,120]),True,alpha=0.7)
+
+#plotting averages and boxplots
+#mpl.rcParams.update(mpl.rcParamsDefault)
+#plt.rc('xtick',labelsize=6)
+#plt.figure(figsize=(5,5))
+fig,ax=plt.subplots(1,1)
+avg_box(ax,10,**{'adver':1})
+#plt.show()
+plt.savefig(DA_+'avgbox10@1.png',bbox_inches='tight')
+
+#plotting ROC curves for all experiments
 fig,ax=plt.subplots()
 R=range(-90,-20)
 cmap=plt.cm.get_cmap('tab20')
