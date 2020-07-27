@@ -124,8 +124,8 @@ hists(files(1,[24,48,72,120]),True,alpha=0.7)
 #plt.rc('xtick',labelsize=6)
 #plt.figure(figsize=(5,5))
 fig,ax=plt.subplots(1,1)
-avg_box(ax,10,**{'adver':1})
-#plt.show()
+avg_box(ax,10,**{'adver':1}) #you can change the 10 to any number from 1-10
+#plt.show()    #       vv       be sure to also change the 10 here
 plt.savefig(DA_+'avgbox10@1.png',bbox_inches='tight')
 
 #plotting ROC curves for all experiments
